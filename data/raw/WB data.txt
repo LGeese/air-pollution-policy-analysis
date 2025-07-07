@@ -1,0 +1,2 @@
+WB_GDP_PCA_PPP:
+https://data.worldbank.org/indicator/NY.GDP.PCAP.PP.KD?view=map
