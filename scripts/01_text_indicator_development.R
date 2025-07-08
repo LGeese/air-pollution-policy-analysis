@@ -201,7 +201,7 @@ stm.fit_cclw0 <- stm(dtm_cclw_trimmed$documents, dtm_cclw_trimmed$vocab, K=0,
                      data = dtm_cclw_trimmed$meta, 
                      init.type = "Spectral")
 
-save(stm.fit_cclw0, out, dtm_cclw, file = here("models", "stm.fit_cclw.RData"))
+save(stm.fit_cclw0, out, dtm_cclw, dtm_cclw_trimmed, file = here("models", "stm.fit_cclw.RData"))
 # Optional: reload STM model without re-running
 # load(here("models", "stm.fit_cclw.RData"))
 
