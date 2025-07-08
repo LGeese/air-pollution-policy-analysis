@@ -3,7 +3,7 @@
 # Purpose: Provide validation for computational text analysis and robustness
 #          checks for statistical analysis
 # Author: Dr. Lucas Geese
-# Last updated: 2025-07-07
+# Last updated: 2025-07-08
 # ------------------------------------------------------------------------------
 
 
@@ -50,6 +50,10 @@ library(cowplot)
 here::i_am("scripts/03_validation_and_robustness.R")
 
 # Step 1: Assess alternative STM specifications ---------------------------
+# Topical content and prevalence can be different across models specified with varying
+# number of topics. To assess the validity of the topic extracted from a given model,
+# one ought to assess topic stability across a number of candidate models
+
 
 load(here("models", "stm.fit_cclw.RData"))
 set.seed(123)
@@ -101,7 +105,7 @@ topics_tibble50$ap_topic_max <- ifelse((topics_tibble50$V5 == topics_tibble50$ma
                                        (topics_tibble50$V25 == topics_tibble50$max_prop) |
                                        (topics_tibble50$V44 == topics_tibble50$max_prop) |
                                          (topics_tibble50$V47 == topics_tibble50$max_prop), 1, 0)
-5, 12, 18, 25, 42, 48
+
 topics_tibble60$ap_topic_max <- ifelse((topics_tibble60$V5 == topics_tibble60$max_prop) | 
                                          (topics_tibble60$V12 == topics_tibble60$max_prop) |
                                          (topics_tibble60$V18 == topics_tibble60$max_prop) |
@@ -116,23 +120,25 @@ table(topics_tibble$ap_topic_max, topics_tibble60$ap_topic_max)
 (4944+196)/sum(table(topics_tibble$ap_topic_max, topics_tibble60$ap_topic_max))
 
 
+# Step 2: Assess regression models with unrelated public health ou --------
+# To assess whether the impact of the air pollution policy indicator is an artifact of the 
+# general public health situation in a country. If the impact was air pollution specific
+# we wouldnt expect to observe a significant relationship with a country's vulnerability to
+# mosquito-borne disease
 
-# Step 3: Import and prepare health outcome data --------------------------
 
-
+load(here("data", "processed", "stats_data.RData"))
 
 # Fetch the data: Lancet Countdown Indicator 2.3.1 Vulnerability to Severe Mosquito-Borne Disease
 download.file("https://lancetcountdown.org/wp-content/uploads/2025/04/Indicator-2.3.1_Data-Download_2024-Lancet-Countdown-Report.xlsx", 
-              destfile = "data/raw/Lancet_Indicator-2.3.1.xlsx",
+              destfile = here("data", "raw", "Lancet_Indicator-2.3.1.xlsx"),
               mode = "wb")
 mosquito_disease <- read_excel("data/raw/Lancet_Indicator-2.3.1.xlsx", sheet = "2024 Report Data") %>% 
   rename(country_iso = `ISO3 Code`,
          mosquito_disease_vuln = `Vulnerability Index - Scaled`) %>% 
   select(country_iso, Year, mosquito_disease_vuln)
 
-
-# Step 4: Merge health outcome data with CCLW and contextual data ---------
-
+# Merge health outcome data with CCLW and contextual data
 mosquito_disease <- mosquito_disease %>% 
   left_join(cclw_final) %>% 
   left_join(cclw_final_t1) %>% 
@@ -157,4 +163,100 @@ mosquito_disease <- mosquito_disease %>%
          v2x_gender_z = scale(v2x_gender),
          v2x_corr_z = scale(v2x_corr))
 
+# Convert to panel data format
 
+panel_data_mosquito <- pdata.frame(mosquito_disease, index = c("country_iso", "Year"))
+
+# Fixed effects regression models
+fe_model_mosquito_t0 <- plm(mosquito_disease_vuln_z ~ 
+                     ap_topic_max_z + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data_mosquito, 
+                   model = "within")  # "within" specifies fixed effects
+
+# Estimate time-lagged effects to account for policy implementation delays
+fe_model_mosquito_t1 <- plm(mosquito_disease_vuln_z ~ 
+                     ap_topic_max_z_lag1 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data_mosquito, 
+                   model = "within")  # "within" specifies fixed effects
+
+fe_model_mosquito_t2 <- plm(mosquito_disease_vuln_z ~ 
+                     ap_topic_max_z_lag2 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data_mosquito, 
+                   model = "within")  # "within" specifies fixed effects
+
+fe_model_mosquito_t3 <- plm(mosquito_disease_vuln_z ~ 
+                     ap_topic_max_z_lag3 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data_mosquito, 
+                   model = "within")  # "within" specifies fixed effects
+
+fe_model_mosquito_t4 <- plm(mosquito_disease_vuln_z ~ 
+                     ap_topic_max_z_lag4 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data_mosquito, 
+                   model = "within")  # "within" specifies fixed effects
+
+# Interaction model to test whether policy effects differ by human development level
+fe_model_mosquito_hdi <- plm(mosquito_disease_vuln_z ~ 
+                      ap_topic_max_z*HDI_Group + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                    data = panel_data_mosquito, 
+                    model = "within")  # "within" specifies fixed effects
+
+# Summaries of the models
+summary(fe_model_mosquito_t0)
+summary(fe_model_mosquito_t1)
+summary(fe_model_mosquito_t2)
+summary(fe_model_mosquito_t3)
+summary(fe_model_mosquito_t4)
+summary(fe_model_mosquito_hdi)
+
+
+
+# Step 3: Assess regression models with other policy indicator ------------
+# To assess whether the impact of the air pollution policy indicator is an artifact of the 
+# generla climate policy activity. If the impact was air pollution specific
+# we wouldnt expect to observe a significant relationship between annual exposure to PM2.5 and
+# documents maxing on another topic "Agricultural Sustainable Development"
+
+# Convert to panel data format
+
+panel_data <- pdata.frame(ap_exposure, index = c("country_iso", "Year"))
+
+# Fixed effects regression models
+fe_model_t0 <- plm(ap_exposure_z ~ 
+                     asd_topic_max_z + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data, 
+                   model = "within")  # "within" specifies fixed effects
+
+# Estimate time-lagged effects to account for policy implementation delays
+fe_model_t1 <- plm(ap_exposure_z ~ 
+                     asd_topic_max_z_lag1 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data, 
+                   model = "within")  # "within" specifies fixed effects
+
+fe_model_t2 <- plm(ap_exposure_z ~ 
+                     asd_topic_max_z_lag2 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data, 
+                   model = "within")  # "within" specifies fixed effects
+
+fe_model_t3 <- plm(ap_exposure_z ~ 
+                     asd_topic_max_z_lag3 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data, 
+                   model = "within")  # "within" specifies fixed effects
+
+fe_model_t4 <- plm(ap_exposure_z ~ 
+                     asd_topic_max_z_lag4 + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                   data = panel_data, 
+                   model = "within")  # "within" specifies fixed effects
+
+# Interaction model to test whether policy effects differ by human development level
+fe_model_hdi <- plm(ap_exposure_z ~ 
+                      asd_topic_max_z*HDI_Group + gdp_pc_z + v2x_gender_z + v2x_corr_z,
+                    data = panel_data, 
+                    model = "within")  # "within" specifies fixed effects
+
+# Summaries of the models
+summary(fe_model_t0)
+summary(fe_model_t1)
+summary(fe_model_t2)
+summary(fe_model_t3)
+summary(fe_model_t4)
+summary(fe_model_hdi)

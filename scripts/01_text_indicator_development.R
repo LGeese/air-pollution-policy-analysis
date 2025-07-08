@@ -3,7 +3,7 @@
 # Purpose: Generate country-year-level indicator of air pollution-related
 #          climate policies using structural topic models (STM)
 # Author: Dr. Lucas Geese
-# Last updated: 2025-07-07
+# Last updated: 2025-07-08
 # ------------------------------------------------------------------------------
 # Github
 # Load required packages --------------------------------------------------

@@ -3,7 +3,7 @@
 # Purpose: Undertake statistical analysis of how air pollution-related
 #          climate policies impact average annual exposure to PM2.5 air pollution
 # Author: Dr. Lucas Geese
-# Last updated: 2025-07-07
+# Last updated: 2025-07-08
 # ------------------------------------------------------------------------------
 
 
@@ -311,3 +311,12 @@ final_plot <- ggdraw() +
 png(here("output", "figures", "combined_plot.png"), width = 8, height = 5, units = "in", res = 300)
 print(final_plot)
 dev.off()
+
+
+# Step 9: Save recoded data frames for robustness checks ------------------
+
+save(ap_exposure, cclw_final, cclw_final_t1, cclw_final_t2, cclw_final_t3, 
+     cclw_final_t4, gdp_pc, hdi, vdemdata, 
+     file = here("data", "processed", "stats_data.RData"))
+
+
