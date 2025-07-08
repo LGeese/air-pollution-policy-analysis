@@ -10,7 +10,7 @@
 
 # Define required packages
 required_packages <- c("here", "tidyverse", "sjmisc", "stringi", "stm", "quanteda", 
-                       "rvest", "devtools", "officer")
+                       "rvest", "devtools", "vdemdata", "officer")
 
 # Install required packages only if not already installed (for reproducibility)
 # Only install packages if the script is run interactively (e.g., in an R session)
@@ -201,7 +201,7 @@ stm.fit_cclw0 <- stm(dtm_cclw_trimmed$documents, dtm_cclw_trimmed$vocab, K=0,
                      data = dtm_cclw_trimmed$meta, 
                      init.type = "Spectral")
 
-save(stm.fit_cclw0, file = here("models", "stm.fit_cclw.RData"))
+save(stm.fit_cclw0, out, dtm_cclw, file = here("models", "stm.fit_cclw.RData"))
 # Optional: reload STM model without re-running
 # load(here("models", "stm.fit_cclw.RData"))
 
