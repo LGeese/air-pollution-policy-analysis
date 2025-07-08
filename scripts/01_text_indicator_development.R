@@ -175,7 +175,7 @@ corpus <- corpus(cclw$text_clean,
                                      v2x_gender = cclw$v2x_gender,
                                      v2x_corr = cclw$v2x_corr))
 
-# Tokenise, remove punctuation and symbols, decapitalise, remove stopwords, stem words and 
+# Tokenise, remove punctuation and symbols, lowercase, remove stopwords, stem words and 
 # create a document-term matrix
 dtm_cclw <- corpus %>% 
   tokens(remove_punct = T, remove_symbols = T) %>% 
