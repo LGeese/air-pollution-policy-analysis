@@ -46,19 +46,75 @@ library(vdemdata)
 library(broom)
 library(cowplot)
 
+# Set root directory
+here::i_am("scripts/03_validation_and_robustness.R")
+
 # Step 1: Assess alternative STM specifications ---------------------------
 
 load(here("models", "stm.fit_cclw.RData"))
-
-stm.fit_cclw40 <- stm(dtm_cclw_trimmed$documents, dtm_cclw_trimmed$vocab, K=40, 
+set.seed(123)
+stm.fit_cclw50 <- stm(dtm_cclw_trimmed$documents, dtm_cclw_trimmed$vocab, K=50, 
                      prevalence =~ HDI_Group_2023 + s(Year) + gdp_pc + v2x_gender + v2x_corr, 
                      data = dtm_cclw_trimmed$meta, 
                      init.type = "Spectral")
-
-stm.fit_cclw60 <- stm(dtm_cclw_trimmed$documents, dtm_cclw_trimmed$vocab, K=40, 
+set.seed(123)
+stm.fit_cclw60 <- stm(dtm_cclw_trimmed$documents, dtm_cclw_trimmed$vocab, K=60, 
                       prevalence =~ HDI_Group_2023 + s(Year) + gdp_pc + v2x_gender + v2x_corr, 
                       data = dtm_cclw_trimmed$meta, 
                       init.type = "Spectral")
+
+save(stm.fit_cclw50, stm.fit_cclw60, file = here("models", "stm.fit_cclw_addon.RData"))
+# Optional: reload STM model without re-running
+# load(here("models", "stm.fit_cclw_addon.RData"))
+
+# Check topic-defining words and proportions
+labelTopics(stm.fit_cclw50)
+labelTopics(stm.fit_cclw60)
+
+# Topics that have an air pollution dimension to it
+labelTopics(stm.fit_cclw0, topics = c(18, 26, 38, 43, 47))
+labelTopics(stm.fit_cclw50, topics = c(5, 12, 25, 44, 47))
+labelTopics(stm.fit_cclw60, topics = c(5, 12, 18, 25, 42, 48))
+
+# Actual topic proportions are stored in a matrix inside the stm.fit object: theta
+# This puts them into a new tibble object
+topics_tibble <- as_tibble(stm.fit_cclw0$theta)
+topics_tibble50 <- as_tibble(stm.fit_cclw50$theta)
+topics_tibble60 <- as_tibble(stm.fit_cclw60$theta)
+
+# Extract the highest topic proportion for each document across topics  
+topics_tibble$max_prop <- apply(topics_tibble[,1:52], 1, function(x) rev(sort(x))[1])
+topics_tibble50$max_prop <- apply(topics_tibble50[,1:50], 1, function(x) rev(sort(x))[1])
+topics_tibble60$max_prop <- apply(topics_tibble60[,1:60], 1, function(x) rev(sort(x))[1])
+
+# Identify documents maxing on the five air pollution topics; this variable therefore
+# indicates policies with  one of the five air pollution topics scoring as the highest 
+# of all topic proportions
+topics_tibble$ap_topic_max <- ifelse((topics_tibble$V18 == topics_tibble$max_prop) | 
+                                       (topics_tibble$V26 == topics_tibble$max_prop) |
+                                       (topics_tibble$V38 == topics_tibble$max_prop) |
+                                       (topics_tibble$V43 == topics_tibble$max_prop) |
+                                       (topics_tibble$V47 == topics_tibble$max_prop), 1, 0)
+
+topics_tibble50$ap_topic_max <- ifelse((topics_tibble50$V5 == topics_tibble50$max_prop) | 
+                                       (topics_tibble50$V12 == topics_tibble50$max_prop) |
+                                       (topics_tibble50$V25 == topics_tibble50$max_prop) |
+                                       (topics_tibble50$V44 == topics_tibble50$max_prop) |
+                                         (topics_tibble50$V47 == topics_tibble50$max_prop), 1, 0)
+5, 12, 18, 25, 42, 48
+topics_tibble60$ap_topic_max <- ifelse((topics_tibble60$V5 == topics_tibble60$max_prop) | 
+                                         (topics_tibble60$V12 == topics_tibble60$max_prop) |
+                                         (topics_tibble60$V18 == topics_tibble60$max_prop) |
+                                         (topics_tibble60$V25 == topics_tibble60$max_prop) |
+                                         (topics_tibble60$V42 == topics_tibble60$max_prop) |
+                                         (topics_tibble60$V48 == topics_tibble60$max_prop), 1, 0)
+
+table(topics_tibble$ap_topic_max, topics_tibble50$ap_topic_max)
+(5008+266)/sum(table(topics_tibble$ap_topic_max, topics_tibble50$ap_topic_max))
+
+table(topics_tibble$ap_topic_max, topics_tibble60$ap_topic_max)
+(4944+196)/sum(table(topics_tibble$ap_topic_max, topics_tibble60$ap_topic_max))
+
 
 
 # Step 3: Import and prepare health outcome data --------------------------
@@ -100,3 +156,5 @@ mosquito_disease <- mosquito_disease %>%
          gdp_pc_z = scale(gdp_pc),
          v2x_gender_z = scale(v2x_gender),
          v2x_corr_z = scale(v2x_corr))
+
+
